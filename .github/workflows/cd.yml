@@ -1,0 +1,55 @@
+name: CD — Deploy to AWS ECS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-southeast-1
+  ECS_CLUSTER: ai-traveldesk-cluster
+  ECR_BACKEND_REPO: ai-traveldesk-backend
+  ECR_FRONTEND_REPO: ai-traveldesk-frontend
+
+jobs:
+  deploy:
+    name: Build, Push ECR & Deploy ECS Fargate
+    runs-on: ubuntu-latest
+    if: ${{ vars.AWS_DEPLOY_ENABLED == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -f infrastructure/docker/backend.prod.Dockerfile -t "$REGISTRY/$ECR_BACKEND_REPO:$IMAGE_TAG" ./backend
+          docker push "$REGISTRY/$ECR_BACKEND_REPO:$IMAGE_TAG"
+
+      - name: Build and push frontend image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -f infrastructure/docker/frontend.prod.Dockerfile -t "$REGISTRY/$ECR_FRONTEND_REPO:$IMAGE_TAG" ./frontend
+          docker push "$REGISTRY/$ECR_FRONTEND_REPO:$IMAGE_TAG"
+
+      - name: Trigger ECS service deployments
+        run: |
+          aws ecs update-service --cluster "$ECS_CLUSTER" --service ai-traveldesk-backend --force-new-deployment
+          aws ecs update-service --cluster "$ECS_CLUSTER" --service ai-traveldesk-frontend --force-new-deployment

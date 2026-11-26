@@ -1,0 +1,50 @@
+{
+  "family": "ai-traveldesk-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "${ECS_EXECUTION_ROLE_ARN}",
+  "taskRoleArn": "${ECS_TASK_ROLE_ARN}",
+  "containerDefinitions": [
+    {
+      "name": "backend",
+      "image": "${ECR_REGISTRY}/ai-traveldesk-backend:${IMAGE_TAG}",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "APP_ENV", "value": "production" },
+        { "name": "DEBUG", "value": "false" },
+        { "name": "API_V1_PREFIX", "value": "/api/v1" }
+      ],
+      "secrets": [
+        { "name": "DATABASE_URL", "valueFrom": "${SECRET_DATABASE_URL_ARN}" },
+        { "name": "DATABASE_URL_SYNC", "valueFrom": "${SECRET_DATABASE_URL_SYNC_ARN}" },
+        { "name": "REDIS_URL", "valueFrom": "${SECRET_REDIS_URL_ARN}" },
+        { "name": "JWT_SECRET_KEY", "valueFrom": "${SECRET_JWT_SECRET_ARN}" },
+        { "name": "ENCRYPTION_KEY", "valueFrom": "${SECRET_ENCRYPTION_KEY_ARN}" },
+        { "name": "OPENAI_API_KEY", "valueFrom": "${SECRET_OPENAI_KEY_ARN}" }
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 20
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/ai-traveldesk-backend",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

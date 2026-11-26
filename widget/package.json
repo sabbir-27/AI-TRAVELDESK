@@ -1,0 +1,6 @@
+{
+  "name": "@ai-traveldesk/widget",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Embeddable white-label AI TravelDesk chatbot widget (implemented in Phase 6)"
+}

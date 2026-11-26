@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: AI TravelDesk
+    orgId: 1
+    folder: AI TravelDesk
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards
